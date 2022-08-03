@@ -144,3 +144,6 @@ dmypy.json
 .history/
 
 .mypy_cache
+
+# Emulated emails
+sent_emails/*.log
