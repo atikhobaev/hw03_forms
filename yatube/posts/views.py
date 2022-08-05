@@ -13,7 +13,7 @@ POST_QUANTITY = 10
 
 def index(request):
     """Главная страница с постами."""
-    posts = Post.objects.all()
+    posts = Post.objects.select_related('author').all()
     paginator = Paginator(posts, POST_QUANTITY)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -27,8 +27,7 @@ def index(request):
 def group_posts(request, slug):
     """Страница группы с постами."""
     group = get_object_or_404(Group, slug=slug)
-
-    posts = Post.objects.filter(group=group)
+    posts = group.posts.all()
     paginator = Paginator(posts, POST_QUANTITY)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -52,7 +51,6 @@ def profile(request, username):
         'author': author,
         'page_obj': page_obj,
         'posts_count': author.posts.count(),
-        'posts': posts,
         'paginator': paginator,
     }
 
@@ -96,21 +94,23 @@ def post_create(request):
 def post_edit(request, post_id):
     """Отредактировать пост."""
     post = get_object_or_404(Post, pk=post_id)
+    form = PostForm(
+        request.POST or None,
+        instance=post,
+    )
 
-    if request.user == post.author:
-        form = PostForm(
-            request.POST or None,
-            instance=post,
-        )
-        if form.is_valid():
-            form.save()
-            return redirect('posts:post_detail', post_id=post_id)
+    if not request.user == post.author:
+        return redirect('posts:post_detail', post_id=post_id)
 
-        context = {
-            'post': post,
-            'form': form,
-            'is_edit': True,
-        }
-        return render(request, 'posts/post_create.html', context)
+    if form.is_valid():
+        form.save()
+        return redirect('posts:post_detail', post_id=post_id)
 
-    return HttpResponseForbidden()
+    context = {
+        'post': post,
+        'form': form,
+        'is_edit': True,
+    }
+    return render(request, 'posts/post_create.html', context)
+
+    
